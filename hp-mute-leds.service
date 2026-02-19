@@ -1,0 +1,13 @@
+[Unit]
+Description=HP OmniBook X Flip 16 mute LED sync
+After=sound.target
+Wants=sound.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/hp-mute-leds.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
