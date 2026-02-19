@@ -54,7 +54,7 @@ sudo pacman -S alsa-tools alsa-utils evtest
 ## Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/hp-omnibook-mute-leds.git
+git clone https://github.com/parkkarl/hp-omnibook-mute-leds.git
 cd hp-omnibook-mute-leds
 sudo ./install.sh
 ```
