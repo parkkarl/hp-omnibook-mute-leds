@@ -123,8 +123,8 @@ monitor_volume() {
     done
 }
 
-# Monitor mic mute via KEY_MICMUTE input events from HP WMI
-monitor_micmute() {
+# Monitor mic mute via KEY_MICMUTE input events from HP WMI (hardware key)
+monitor_micmute_hw() {
     stdbuf -oL evtest "$WMI_DEVICE" 2>/dev/null | while read -r line; do
         if echo "$line" | grep -q "code 248 (KEY_MICMUTE), value 1"; then
             mic_state=$(cat "$MIC_STATE_FILE")
@@ -134,6 +134,23 @@ monitor_micmute() {
             else
                 echo 0 > "$MIC_STATE_FILE"
                 set_mic_mute_led 0
+            fi
+        fi
+    done
+}
+
+# Monitor mic mute via PipeWire events (software mute from apps like Zoom)
+monitor_micmute_sw() {
+    local prev_mic_mute uid
+    prev_mic_mute=$(get_mic_mute)
+    uid="${XDG_RUNTIME_DIR##*/}"
+    stdbuf -oL runuser -u "#$uid" -- env XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" pactl subscribe 2>/dev/null | while read -r line; do
+        if echo "$line" | grep -q "'change' on source"; then
+            mic_mute=$(get_mic_mute)
+            if [ "$mic_mute" != "$prev_mic_mute" ]; then
+                echo "$mic_mute" > "$MIC_STATE_FILE"
+                set_mic_mute_led "$mic_mute"
+                prev_mic_mute=$mic_mute
             fi
         fi
     done
@@ -149,6 +166,7 @@ cleanup() {
 trap cleanup EXIT
 
 monitor_volume &
-monitor_micmute &
+monitor_micmute_hw &
+monitor_micmute_sw &
 
 wait
