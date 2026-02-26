@@ -12,6 +12,7 @@ systemctl stop hp-mute-leds.service 2>/dev/null || true
 systemctl disable hp-mute-leds.service 2>/dev/null || true
 rm -f /etc/systemd/system/hp-mute-leds.service
 rm -f /usr/local/bin/hp-mute-leds.sh
+rm -f /usr/lib/systemd/system-sleep/hp-mute-leds-resume.sh
 rm -f /run/hp-mute-leds-mic-state
 systemctl daemon-reload
 

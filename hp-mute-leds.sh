@@ -46,6 +46,15 @@ CODEC=$(find_codec) || { echo "ERROR: ALC245 codec not found"; exit 1; }
 WMI_DEVICE=$(find_wmi_device) || { echo "ERROR: HP WMI hotkeys device not found"; exit 1; }
 MIC_STATE_FILE="/run/hp-mute-leds-mic-state"
 
+# Find active user session for PipeWire/PulseAudio access (skip root uid 0)
+for _dir in /run/user/[0-9]*; do
+    [ "$_dir" = "/run/user/0" ] && continue
+    if [ -S "$_dir/pipewire-0" ] || [ -S "$_dir/pulse/native" ]; then
+        export XDG_RUNTIME_DIR="$_dir"
+        break
+    fi
+done
+
 echo "Using codec: $CODEC"
 echo "Using WMI device: $WMI_DEVICE"
 
@@ -72,12 +81,21 @@ set_mic_mute_led() {
 }
 
 get_volume_mute() {
-    amixer -c 0 get Master 2>/dev/null | grep -c '\[off\]'
+    amixer -c 0 get Master 2>/dev/null | grep -c '\[off\]' || true
 }
 
-# Mic is unmuted at boot; F9 toggles state
-echo 0 > "$MIC_STATE_FILE"
-set_mic_mute_led 0
+get_mic_mute() {
+    pactl get-source-mute @DEFAULT_SOURCE@ 2>/dev/null | grep -c 'yes' || true
+}
+
+# Detect actual mic mute state from PipeWire
+if [ "$(get_mic_mute)" -gt 0 ]; then
+    echo 1 > "$MIC_STATE_FILE"
+    set_mic_mute_led 1
+else
+    echo 0 > "$MIC_STATE_FILE"
+    set_mic_mute_led 0
+fi
 
 # Set initial volume LED state
 if [ "$(get_volume_mute)" -gt 0 ]; then

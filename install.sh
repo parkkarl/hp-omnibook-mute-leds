@@ -17,9 +17,10 @@ for cmd in hda-verb amixer alsactl evtest; do
     fi
 done
 
-# Install script and service
+# Install script, service, and sleep hook
 install -m 755 hp-mute-leds.sh /usr/local/bin/hp-mute-leds.sh
 install -m 644 hp-mute-leds.service /etc/systemd/system/hp-mute-leds.service
+install -m 755 hp-mute-leds-resume.sh /usr/lib/systemd/system-sleep/hp-mute-leds-resume.sh
 
 systemctl daemon-reload
 systemctl enable --now hp-mute-leds.service
