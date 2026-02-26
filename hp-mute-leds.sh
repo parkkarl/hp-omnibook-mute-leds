@@ -51,6 +51,7 @@ for _dir in /run/user/[0-9]*; do
     [ "$_dir" = "/run/user/0" ] && continue
     if [ -S "$_dir/pipewire-0" ] || [ -S "$_dir/pulse/native" ]; then
         export XDG_RUNTIME_DIR="$_dir"
+        SESSION_USER=$(getent passwd "${_dir##*/}" | cut -d: -f1)
         break
     fi
 done
@@ -85,7 +86,7 @@ get_volume_mute() {
 }
 
 get_mic_mute() {
-    pactl get-source-mute @DEFAULT_SOURCE@ 2>/dev/null | grep -c 'yes' || true
+    runuser -u "$SESSION_USER" -- env XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" pactl get-source-mute @DEFAULT_SOURCE@ 2>/dev/null | grep -c 'yes' || true
 }
 
 # Detect actual mic mute state from PipeWire
@@ -141,10 +142,9 @@ monitor_micmute_hw() {
 
 # Monitor mic mute via PipeWire events (software mute from apps like Zoom)
 monitor_micmute_sw() {
-    local prev_mic_mute uid
+    local prev_mic_mute
     prev_mic_mute=$(get_mic_mute)
-    uid="${XDG_RUNTIME_DIR##*/}"
-    stdbuf -oL runuser -u "#$uid" -- env XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" pactl subscribe 2>/dev/null | while read -r line; do
+    runuser -u "$SESSION_USER" -- env XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" stdbuf -oL pactl subscribe 2>/dev/null | while read -r line; do
         if echo "$line" | grep -q "'change' on source"; then
             mic_mute=$(get_mic_mute)
             if [ "$mic_mute" != "$prev_mic_mute" ]; then
